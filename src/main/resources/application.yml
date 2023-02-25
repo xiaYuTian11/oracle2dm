@@ -1,2 +1,49 @@
 server:
   port: 8885
+
+
+spring:
+  datasource:
+    dynamic:
+      primary: master #\u8BBE\u7F6E\u9ED8\u8BA4\u7684\u6570\u636E\u6E90\u6216\u8005\u6570\u636E\u6E90\u7EC4,\u9ED8\u8BA4\u503C\u5373\u4E3Amaster
+      strict: false #\u4E25\u683C\u5339\u914D\u6570\u636E\u6E90,\u9ED8\u8BA4false. true\u672A\u5339\u914D\u5230\u6307\u5B9A\u6570\u636E\u6E90\u65F6\u629B\u5F02\u5E38,false\u4F7F\u7528\u9ED8\u8BA4\u6570\u636E\u6E90
+      datasource:
+        master:
+          url: jdbc:dm://192.168.0.246:5236/ZBBSMZ?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+          username: ZBBSMZ
+          password: cqszbbsmz
+          driver-class-name: dm.jdbc.driver.DmDriver
+        oracle:
+          url: jdbc:oracle:thin:@172.18.40.200:1521:smz?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+          username: ZBBSMZ
+          password: 123456
+          driver-class-name: oracle.jdbc.driver.OracleDriver
+  # \u8FDE\u63A5\u6C60
+  hikari:
+    #\u8FDE\u63A5\u6C60\u540D
+    pool-name: DateHikariCP
+    #\u6700\u5C0F\u7A7A\u95F2\u8FDE\u63A5\u6570
+    minimum-idle: 5
+    # \u7A7A\u95F2\u8FDE\u63A5\u5B58\u6D3B\u6700\u5927\u65F6\u95F4\uFF0C\u9ED8\u8BA4600000\uFF0810\u5206\u949F\uFF09
+    idle-timeout: 180000
+    # \u8FDE\u63A5\u6C60\u6700\u5927\u8FDE\u63A5\u6570\uFF0C\u9ED8\u8BA4\u662F10
+    maximum-pool-size: 10
+    # \u6B64\u5C5E\u6027\u63A7\u5236\u4ECE\u6C60\u8FD4\u56DE\u7684\u8FDE\u63A5\u7684\u9ED8\u8BA4\u81EA\u52A8\u63D0\u4EA4\u884C\u4E3A,\u9ED8\u8BA4\u503C\uFF1Atrue
+    auto-commit: true
+    # \u6B64\u5C5E\u6027\u63A7\u5236\u6C60\u4E2D\u8FDE\u63A5\u7684\u6700\u957F\u751F\u547D\u5468\u671F\uFF0C\u503C0\u8868\u793A\u65E0\u9650\u751F\u547D\u5468\u671F\uFF0C\u9ED8\u8BA41800000\u537330\u5206\u949F
+    max-lifetime: 1800000
+    # \u6570\u636E\u5E93\u8FDE\u63A5\u8D85\u65F6\u65F6\u95F4,\u9ED8\u8BA430\u79D2\uFF0C\u537330000
+    connection-timeout: 30000
+    connection-test-query: SELECT 1
+
+mybatis-plus:
+  configuration:
+#    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'null'
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    top.tanmw.oracle2dm.dao: debug
