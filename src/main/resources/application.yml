@@ -9,12 +9,12 @@ spring:
       strict: false #\u4E25\u683C\u5339\u914D\u6570\u636E\u6E90,\u9ED8\u8BA4false. true\u672A\u5339\u914D\u5230\u6307\u5B9A\u6570\u636E\u6E90\u65F6\u629B\u5F02\u5E38,false\u4F7F\u7528\u9ED8\u8BA4\u6570\u636E\u6E90
       datasource:
         master:
-          url: jdbc:dm://192.168.0.246:5236/SMZ_FROM_ORACLE?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+          url: jdbc:dm://192.168.0.246:5236/SMZ_FROM_ORACLE?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&rewriteBatchedStatements=true
           username: SMZ_FROM_ORACLE
           password: Cqsmz.123
           driver-class-name: dm.jdbc.driver.DmDriver
         oracle:
-          url: jdbc:oracle:thin:@172.18.40.200:1521:smz?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+          url: jdbc:oracle:thin:@172.18.40.200:1521:smz?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&rewriteBatchedStatements=true
           username: ZBBSMZ
           password: 123456
           driver-class-name: oracle.jdbc.driver.OracleDriver

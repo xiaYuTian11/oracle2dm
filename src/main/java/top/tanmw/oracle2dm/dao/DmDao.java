@@ -13,6 +13,7 @@ import java.util.List;
 @Mapper
 public interface DmDao {
 
-
     List<String> findAllTable();
+
+    Integer delete(String tableName);
 }
