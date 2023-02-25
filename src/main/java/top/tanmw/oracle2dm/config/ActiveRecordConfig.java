@@ -9,6 +9,7 @@ import com.jfinal.plugin.hikaricp.HikariCpPlugin;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import top.tanmw.oracle2dm.constants.DbConstant;
 
 /**
@@ -16,6 +17,7 @@ import top.tanmw.oracle2dm.constants.DbConstant;
  * @since 2023/2/25 17:38
  */
 @Configuration
+@Order(1)
 public class ActiveRecordConfig {
     @Value("${spring.datasource.dynamic.datasource.master.url}")
     private String url;
