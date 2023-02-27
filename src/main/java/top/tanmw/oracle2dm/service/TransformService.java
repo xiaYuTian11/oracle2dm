@@ -151,7 +151,7 @@ public class TransformService {
                         int finalI = i;
                         String finalConstraint = constraint;
                         if (i != 0) {
-                            ThreadUtil.sleep(30);
+                            ThreadUtil.sleep(60);
                         }
                         ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
                             log.info("分页查询{}数据:{}", tableName, finalI * PAGE_SIZE + "--" + (finalI + 1) * PAGE_SIZE);
