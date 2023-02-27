@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class TransformService {
 
     private static final Integer BATCH_SAVE_SIZE = 10000;
-    private static final Integer PAGE_SIZE = BATCH_SAVE_SIZE * 10;
+    private static final Integer PAGE_SIZE = BATCH_SAVE_SIZE * 50;
     private static final Integer NEED_PAGE = BATCH_SAVE_SIZE * 100;
 
     private static final List<String> SKIP_LIST = new ArrayList<String>() {{
@@ -72,8 +72,10 @@ public class TransformService {
     @Autowired
     private DmDao dmDao;
 
+    private DbPro db;
+
     public List<Map<String, Object>> queryAll() throws Exception {
-        DbPro db = Db.use(DbConstant.DM);
+        db = Db.use(DbConstant.DM);
 
         List<String> oracleAllTable = oracleDao.findAllTable();
         List<String> dmAllTable = dmDao.findAllTable();
@@ -130,7 +132,7 @@ public class TransformService {
 
             AtomicBoolean removeR = new AtomicBoolean(false);
 
-            CopyOnWriteArrayList<Map<String, Object>> mapListAll = new CopyOnWriteArrayList<>();
+            // CopyOnWriteArrayList<Map<String, Object>> mapListAll = new CopyOnWriteArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
                 String constraint = oracleDao.findConstraintByP(String.format("'%s'", tableName));
@@ -140,7 +142,7 @@ public class TransformService {
 
                 if (StrUtil.isBlank(constraint)) {
                     List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
-                    mapListAll.addAll(mapList);
+                    this.save2Dm(tableName, mapList, removeR.get());
                 } else {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
@@ -149,11 +151,11 @@ public class TransformService {
                         int finalI = i;
                         String finalConstraint = constraint;
                         // ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
-                            log.info("分页查询{}数据:{}", tableName, (finalI - 1) * PAGE_SIZE + "--" + finalI * PAGE_SIZE);
-                            List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
-                            // mapList.parallelStream().forEach(map-> map.remove("R"));
-                            mapListAll.addAll(mapList);
-                            // cd.countDown();
+                        log.info("分页查询{}数据:{}", tableName, (finalI - 1) * PAGE_SIZE + "--" + finalI * PAGE_SIZE);
+                        List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
+                        // mapList.parallelStream().forEach(map-> map.remove("R"));
+                        this.save2Dm(tableName, mapList, removeR.get());
+                        // cd.countDown();
                         // });
                     }
                     // try {
@@ -164,32 +166,34 @@ public class TransformService {
                 }
             } else {
                 List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
-                mapListAll.addAll(mapList);
+                this.save2Dm(tableName, mapList, removeR.get());
             }
 
-            List<Record> recordList = new ArrayList<>(mapListAll.size());
-            log.info("开始转换模型：{}", tableName);
-            mapListAll.forEach(map -> {
-                Record record = new Record();
-                record.setColumns(map);
-                if (removeR.get()) {
-                    record.remove("R");
-                }
-                recordList.add(record);
-            });
-            if (IDENTITY_LIST.contains(tableName.toUpperCase())) {
-                db.update("SET IDENTITY_INSERT " + tableName + " ON");
-                db.batchSave(tableName, recordList, 10000);
-                db.update("SET IDENTITY_INSERT " + tableName + " OFF");
-            } else {
-                db.batchSave(tableName, recordList, 10000);
-            }
-            log.info("往Dm数据库中{}插入数据：{}", tableName, recordList.size());
         });
 
         long endTime = System.currentTimeMillis();
         log.info("总计耗时：{}", endTime - startTime);
         return null;
+    }
+
+    private void save2Dm(String tableName, List<Map<String, Object>> mapListAll, boolean removeR) {
+        List<Record> recordList = new ArrayList<>(mapListAll.size());
+        mapListAll.forEach(map -> {
+            Record record = new Record();
+            record.setColumns(map);
+            if (removeR) {
+                record.remove("R");
+            }
+            recordList.add(record);
+        });
+        if (IDENTITY_LIST.contains(tableName.toUpperCase())) {
+            db.update("SET IDENTITY_INSERT " + tableName + " ON");
+            db.batchSave(tableName, recordList, BATCH_SAVE_SIZE);
+            db.update("SET IDENTITY_INSERT " + tableName + " OFF");
+        } else {
+            db.batchSave(tableName, recordList, BATCH_SAVE_SIZE);
+        }
+        log.info("往Dm数据库中{}插入数据：{}", tableName, recordList.size());
     }
 
     private void executor(Collection<String> list, Consumer<String> consumer) throws Exception {
