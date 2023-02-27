@@ -11,11 +11,14 @@ import org.springframework.stereotype.Service;
 import top.tanmw.oracle2dm.constants.DbConstant;
 import top.tanmw.oracle2dm.dao.DmDao;
 import top.tanmw.oracle2dm.dao.OracleDao;
+import top.tanmw.oracle2dm.utils.ThreadUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -104,7 +107,7 @@ public class TransformService {
                 return;
             }
 
-            if (StrUtil.equalsIgnoreCase("REPORT_JDXZ", tableName)) {
+            if (StrUtil.equalsIgnoreCase("REPORT_JGSY_COMMON", tableName)) {
                 flag.set(false);
             }
 
@@ -124,7 +127,7 @@ public class TransformService {
             if (count > NEED_PAGE) {
                 needPage.set(true);
             }
-            List<Map<String, Object>> mapList = new ArrayList<>();
+            CopyOnWriteArrayList<Map<String, Object>> mapListAll = new CopyOnWriteArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
                 String constraint = oracleDao.findConstraintByP(String.format("'%s'", tableName));
@@ -133,21 +136,36 @@ public class TransformService {
                 }
 
                 if (StrUtil.isBlank(constraint)) {
-                    mapList = oracleDao.queryByTableName(tableName);
+                    List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
+                    mapListAll.addAll(mapList);
                 } else {
                     int page = ((count - 1) / PAGE_SIZE) + 1;
+                    CountDownLatch cd = new CountDownLatch(page);
                     for (int i = 0; i < page; i++) {
-                        log.info("分页查询{}数据:{}", tableName, (i - 1) * PAGE_SIZE + "--" + i * PAGE_SIZE);
-                        mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, (i - 1) * PAGE_SIZE, i * PAGE_SIZE);
+                        int finalI = i;
+                        String finalConstraint = constraint;
+                        ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
+                            log.info("分页查询{}数据:{}", tableName, (finalI - 1) * PAGE_SIZE + "--" + finalI * PAGE_SIZE);
+                            List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
+                            mapList.parallelStream().forEach(map-> map.remove("R"));
+                            mapListAll.addAll(mapList);
+                            cd.countDown();
+                        });
+                    }
+                    try {
+                        cd.await();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             } else {
-                mapList = oracleDao.queryByTableName(tableName);
+                List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
+                mapListAll.addAll(mapList);
             }
 
-            List<Record> recordList = new ArrayList<>(mapList.size());
+            List<Record> recordList = new ArrayList<>(mapListAll.size());
             log.info("开始转换模型：{}", tableName);
-            mapList.forEach(map -> {
+            mapListAll.forEach(map -> {
                 Record record = new Record();
                 record.setColumns(map);
                 recordList.add(record);
