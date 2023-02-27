@@ -31,9 +31,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TransformService {
 
-    private static final Integer BATCH_SAVE_SIZE = 10000;
-    private static final Integer PAGE_SIZE = BATCH_SAVE_SIZE * 50;
-    private static final Integer NEED_PAGE = BATCH_SAVE_SIZE * 100;
+    private static final Integer DEFAULT_SIZE = 10000;
+    private static final Integer BATCH_SAVE_SIZE = DEFAULT_SIZE * 10;
+    private static final Integer PAGE_SIZE = DEFAULT_SIZE * 50;
+    private static final Integer NEED_PAGE = DEFAULT_SIZE * 100;
 
     private static final List<String> SKIP_LIST = new ArrayList<String>() {{
         add("DICTTREE_LIB");
