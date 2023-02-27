@@ -27,4 +27,8 @@ public class ThreadUtil {
                     .setThreadFactory(Thread::new).build()
     ));
 
+    public static void sleep(Integer second) {
+        cn.hutool.core.thread.ThreadUtil.sleep(second, TimeUnit.SECONDS);
+    }
+
 }
