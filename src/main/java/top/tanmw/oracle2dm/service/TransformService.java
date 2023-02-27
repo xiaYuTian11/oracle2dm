@@ -127,6 +127,9 @@ public class TransformService {
             if (count > NEED_PAGE) {
                 needPage.set(true);
             }
+
+            AtomicBoolean removeR = new AtomicBoolean(false);
+
             CopyOnWriteArrayList<Map<String, Object>> mapListAll = new CopyOnWriteArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
@@ -139,6 +142,7 @@ public class TransformService {
                     List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
                     mapListAll.addAll(mapList);
                 } else {
+                    removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
                     CountDownLatch cd = new CountDownLatch(page);
                     for (int i = 0; i < page; i++) {
@@ -147,7 +151,7 @@ public class TransformService {
                         ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
                             log.info("分页查询{}数据:{}", tableName, (finalI - 1) * PAGE_SIZE + "--" + finalI * PAGE_SIZE);
                             List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
-                            mapList.parallelStream().forEach(map-> map.remove("R"));
+                            // mapList.parallelStream().forEach(map-> map.remove("R"));
                             mapListAll.addAll(mapList);
                             cd.countDown();
                         });
@@ -168,6 +172,9 @@ public class TransformService {
             mapListAll.forEach(map -> {
                 Record record = new Record();
                 record.setColumns(map);
+                if (removeR.get()) {
+                    record.remove("R");
+                }
                 recordList.add(record);
             });
             if (IDENTITY_LIST.contains(tableName.toUpperCase())) {
