@@ -18,5 +18,11 @@ public interface OracleDao {
 
     List<Map<String, Object>> queryByTableName(String tableName);
 
+    List<Map<String, Object>> queryByTableNameOrderBy(String tableName, String orderByFiled, Integer page, Integer size);
+
     List<String> findAllTable();
+
+    String findConstraintByP(String tableName);
+
+    String findConstraintByOther(String tableName);
 }

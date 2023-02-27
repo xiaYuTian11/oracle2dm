@@ -6,6 +6,7 @@ import com.jfinal.plugin.activerecord.Db;
 import com.jfinal.plugin.activerecord.DbPro;
 import com.jfinal.plugin.activerecord.Record;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.tanmw.oracle2dm.constants.DbConstant;
@@ -26,18 +27,23 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TransformService {
 
-    private static final Integer BATCH_SAVE_SIZE = 10000;
-    private static final Integer PAGE_SIZE = 500000;
+    private static final Integer BATCH_SAVE_SIZE = 1000;
+    private static final Integer PAGE_SIZE = BATCH_SAVE_SIZE * 10;
+    private static final Integer NEED_PAGE = BATCH_SAVE_SIZE * 100;
 
     private static final List<String> SKIP_LIST = new ArrayList<String>() {{
         add("DICTTREE_LIB");
         add("DICTT_LIBMAPPING");
         add("DICT_CODE_LIB");
         add("LIB_MANAGER");
+
+        add("GBP_MENU_SANYUAN");
     }};
 
     private static final List<String> IDENTITY_LIST = new ArrayList<String>() {{
         add("GBP_USER");
+        add("GBP_ROLE");
+        add("GBP_ROLEMENU");
     }};
 
     private static final List<String> UPDATE_FILED_LENGTH = new ArrayList<String>() {{
@@ -67,10 +73,11 @@ public class TransformService {
 
         List<String> oracleAllTable = oracleDao.findAllTable();
         List<String> dmAllTable = dmDao.findAllTable();
-        Collection<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable);
+        Collection<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable)
+                .stream().sorted().collect(Collectors.toList());
+        // intersection = intersection.stream().filter(tableName -> !SKIP_LIST.contains(tableName.toUpperCase()))
+        //         .sorted().collect(Collectors.toList());
         log.info("交集：{}", String.join(",", intersection));
-        intersection = intersection.stream().filter(tableName -> !SKIP_LIST.contains(tableName.toUpperCase()))
-                .sorted().collect(Collectors.toList());
 
         Collection<String> subtract = CollUtil.subtract(oracleAllTable, dmAllTable);
         log.info("oracle 中有但是 dm 中没有的表：{}", String.join(",", subtract));
@@ -88,14 +95,20 @@ public class TransformService {
         });
 
         long startTime = System.currentTimeMillis();
-        AtomicBoolean flag = new AtomicBoolean(false);
+        AtomicBoolean flag = new AtomicBoolean(true);
+        AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
-            if (!flag.get()) {
-                if (!StrUtil.equalsIgnoreCase("GBP_MENU_SANYUAN", tableName)) {
-                    return;
-                } else {
-                    flag.set(true);
-                }
+            log.info("当前查询表：{}",tableName);
+            if (SKIP_LIST.contains(tableName.toUpperCase())) {
+                return;
+            }
+
+            if (StrUtil.equalsIgnoreCase("REPORT_JDXZ", tableName)) {
+                flag.set(false);
+            }
+
+            if (flag.get()) {
+                return;
             }
 
             Integer delete = dmDao.delete(tableName);
@@ -106,7 +119,27 @@ public class TransformService {
             if (count <= 0) {
                 return;
             }
-            List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
+
+            if (count > NEED_PAGE) {
+                needPage.set(true);
+            }
+            List<Map<String, Object>> mapList = new ArrayList<>();
+            if (needPage.get()) {
+                // 查询数据库表主键
+                String constraint = oracleDao.findConstraintByP(tableName);
+                if (StrUtil.isBlank(constraint)) {
+                    constraint = oracleDao.findConstraintByOther(tableName);
+                }
+
+                int page = ((count - 1) / PAGE_SIZE) + 1;
+                for (int i = 0; i < page; i++) {
+                    log.info("分页查询{}数据:{}", tableName, (i - 1) * PAGE_SIZE + "--" + i * PAGE_SIZE);
+                    mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, (i - 1) * PAGE_SIZE, i * PAGE_SIZE);
+                }
+            } else {
+                mapList = oracleDao.queryByTableName(tableName);
+            }
+
             List<Record> recordList = new ArrayList<>(mapList.size());
             log.info("开始转换模型：{}", tableName);
             mapList.forEach(map -> {

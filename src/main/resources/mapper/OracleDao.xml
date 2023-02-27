@@ -4,12 +4,64 @@
 
 
     <select id="queryByTableName" resultType="java.util.Map">
-        select * from ${tableName}
+        select *
+        from ${tableName}
     </select>
+
+    <select id="queryByTableNameOrderBy" resultType="java.util.Map">
+        SELECT B.*
+        FROM (
+                 SELECT A.*, rownum r
+                 FROM (
+                          select *
+                          from ${tableName}
+                          order by ${orderByFiled}
+                      ) A
+                 WHERE rownum &lt;= ${size}
+             ) B
+        WHERE r &gt; ${page}
+    </select>
+
     <select id="findAllTable" resultType="java.lang.String">
-        select TABLE_NAME  from user_tables
+        select TABLE_NAME
+        from user_tables
     </select>
     <select id="countByTableName" resultType="java.lang.Integer">
-        select count(*) from ${tableName}
+        select count(*)
+        from ${tableName}
+    </select>
+    <select id="findConstraintByP" resultType="java.lang.String">
+        SELECT B.column_name
+        FROM (
+                 SELECT A.*, rownum r
+                 FROM (
+                          select cu.table_name, cu.column_name, au.constraint_type
+                          from user_cons_columns cu,
+                               user_constraints au
+                          WHERE cu.constraint_name = au.constraint_name
+                            AND au.constraint_type = 'P'
+                            and au.table_name = ${tableName}
+                          ORDER BY cu.table_name
+                      ) A
+                 WHERE rownum &lt;= 1
+             ) B
+        WHERE r &gt;= 0
+    </select>
+    <select id="findConstraintByOther" resultType="java.lang.String">
+        SELECT B.column_name
+        FROM (
+                 SELECT A.*, rownum r
+                 FROM (
+                          select cu.table_name, cu.column_name, au.constraint_type
+                          from user_cons_columns cu,
+                               user_constraints au
+                          WHERE cu.constraint_name = au.constraint_name
+                            AND au.constraint_type is not null
+                            and au.table_name = ${tableName}
+                          ORDER BY cu.table_name
+                      ) A
+                 WHERE rownum &lt;= 1
+             ) B
+        WHERE r &gt;= 0
     </select>
 </mapper>
