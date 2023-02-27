@@ -152,7 +152,9 @@ public class TransformService {
                         int finalI = i;
                         String finalConstraint = constraint;
                         if (i != 0) {
-                            // ThreadUtil.sleep(60);
+                            ThreadUtil.sleep(60);
+                        }
+                        if (i >= 2) {
                             cd.countDown();
                             continue;
                         }
