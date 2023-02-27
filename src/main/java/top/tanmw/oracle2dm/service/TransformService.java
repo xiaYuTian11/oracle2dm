@@ -6,16 +6,17 @@ import com.jfinal.plugin.activerecord.Db;
 import com.jfinal.plugin.activerecord.DbPro;
 import com.jfinal.plugin.activerecord.Record;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.tanmw.oracle2dm.constants.DbConstant;
 import top.tanmw.oracle2dm.dao.DmDao;
 import top.tanmw.oracle2dm.dao.OracleDao;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TransformService {
 
-    private static final Integer BATCH_SAVE_SIZE = 1000;
+    private static final Integer BATCH_SAVE_SIZE = 10000;
     private static final Integer PAGE_SIZE = BATCH_SAVE_SIZE * 10;
     private static final Integer NEED_PAGE = BATCH_SAVE_SIZE * 100;
 
@@ -98,7 +99,7 @@ public class TransformService {
         AtomicBoolean flag = new AtomicBoolean(true);
         AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
-            log.info("当前查询表：{}",tableName);
+            log.info("当前查询表：{}", tableName);
             if (SKIP_LIST.contains(tableName.toUpperCase())) {
                 return;
             }
@@ -131,10 +132,14 @@ public class TransformService {
                     constraint = oracleDao.findConstraintByOther(tableName);
                 }
 
-                int page = ((count - 1) / PAGE_SIZE) + 1;
-                for (int i = 0; i < page; i++) {
-                    log.info("分页查询{}数据:{}", tableName, (i - 1) * PAGE_SIZE + "--" + i * PAGE_SIZE);
-                    mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, (i - 1) * PAGE_SIZE, i * PAGE_SIZE);
+                if (StrUtil.isBlank(constraint)) {
+                    mapList = oracleDao.queryByTableName(tableName);
+                } else {
+                    int page = ((count - 1) / PAGE_SIZE) + 1;
+                    for (int i = 0; i < page; i++) {
+                        log.info("分页查询{}数据:{}", tableName, (i - 1) * PAGE_SIZE + "--" + i * PAGE_SIZE);
+                        mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, (i - 1) * PAGE_SIZE, i * PAGE_SIZE);
+                    }
                 }
             } else {
                 mapList = oracleDao.queryByTableName(tableName);
