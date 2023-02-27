@@ -87,13 +87,13 @@ public class TransformService {
         log.info("dm 中有但是 oracle 中没有的表：{}", String.join(",", subtractDm));
 
         // 修改数据库长度
-        UPDATE_FILED_LENGTH.forEach(sql -> {
-            try {
-                db.update(sql);
-            } catch (Exception e) {
-                log.error("修改字符串长度失败：{}", sql);
-            }
-        });
+        // UPDATE_FILED_LENGTH.forEach(sql -> {
+        //     try {
+        //         db.update(sql);
+        //     } catch (Exception e) {
+        //         log.error("修改字符串长度失败：{}", sql);
+        //     }
+        // });
 
         long startTime = System.currentTimeMillis();
         AtomicBoolean flag = new AtomicBoolean(true);
@@ -127,9 +127,9 @@ public class TransformService {
             List<Map<String, Object>> mapList = new ArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
-                String constraint = oracleDao.findConstraintByP(String.format("'&s'", tableName));
+                String constraint = oracleDao.findConstraintByP(String.format("'%s'", tableName));
                 if (StrUtil.isBlank(constraint)) {
-                    constraint = oracleDao.findConstraintByOther(String.format("'&s'", tableName));
+                    constraint = oracleDao.findConstraintByOther(String.format("'%s'", tableName));
                 }
 
                 if (StrUtil.isBlank(constraint)) {
