@@ -144,23 +144,23 @@ public class TransformService {
                 } else {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
-                    CountDownLatch cd = new CountDownLatch(page);
+                    // CountDownLatch cd = new CountDownLatch(page);
                     for (int i = 0; i < page; i++) {
                         int finalI = i;
                         String finalConstraint = constraint;
-                        ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
+                        // ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
                             log.info("分页查询{}数据:{}", tableName, (finalI - 1) * PAGE_SIZE + "--" + finalI * PAGE_SIZE);
                             List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
                             // mapList.parallelStream().forEach(map-> map.remove("R"));
                             mapListAll.addAll(mapList);
-                            cd.countDown();
-                        });
+                            // cd.countDown();
+                        // });
                     }
-                    try {
-                        cd.await();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
+                    // try {
+                    //     cd.await();
+                    // } catch (InterruptedException e) {
+                    //     throw new RuntimeException(e);
+                    // }
                 }
             } else {
                 List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
