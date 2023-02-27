@@ -127,9 +127,9 @@ public class TransformService {
             List<Map<String, Object>> mapList = new ArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
-                String constraint = oracleDao.findConstraintByP(tableName);
+                String constraint = oracleDao.findConstraintByP(String.format("'&s'", tableName));
                 if (StrUtil.isBlank(constraint)) {
-                    constraint = oracleDao.findConstraintByOther(tableName);
+                    constraint = oracleDao.findConstraintByOther(String.format("'&s'", tableName));
                 }
 
                 if (StrUtil.isBlank(constraint)) {

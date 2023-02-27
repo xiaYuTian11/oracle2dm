@@ -41,7 +41,7 @@
                                user_constraints au
                           WHERE cu.constraint_name = au.constraint_name
                             AND au.constraint_type is not null
-                            and au.table_name = ' || ${tableName}  || '
+                            and au.table_name =  ${tableName}
                           ORDER BY cu.table_name
                       ) A
                  WHERE rownum &lt;= 1
@@ -58,7 +58,7 @@
                                user_constraints au
                           WHERE cu.constraint_name = au.constraint_name
                             AND au.constraint_type = 'P'
-                            and au.table_name = ' || ${tableName}  || '
+                            and au.table_name = ${tableName}
                           ORDER BY cu.table_name
                       ) A
                  WHERE rownum &lt;= 1
