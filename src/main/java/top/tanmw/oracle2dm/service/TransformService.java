@@ -82,7 +82,7 @@ public class TransformService {
                 return;
             }
 
-            if (StrUtil.equalsIgnoreCase("REPORT_SY", tableName)) {
+            if (StrUtil.equalsIgnoreCase("ZJ_WJYS", tableName)) {
                 flag.set(false);
             }
 
