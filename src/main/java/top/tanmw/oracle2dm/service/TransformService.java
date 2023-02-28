@@ -8,6 +8,7 @@ import com.jfinal.plugin.activerecord.Record;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import top.tanmw.oracle2dm.config.DbConfig;
 import top.tanmw.oracle2dm.constants.DbConstant;
 import top.tanmw.oracle2dm.dao.DmDao;
 import top.tanmw.oracle2dm.dao.OracleDao;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -33,41 +33,10 @@ public class TransformService {
 
     private static final Integer DEFAULT_SIZE = 10000;
     private static final Integer BATCH_SAVE_SIZE = DEFAULT_SIZE * 10;
-    private static final Integer PAGE_SIZE = DEFAULT_SIZE * 50;
-    private static final Integer NEED_PAGE = DEFAULT_SIZE * 100;
-
-    private static final List<String> SKIP_LIST = new ArrayList<String>() {{
-        add("DICTTREE_LIB");
-        add("DICTT_LIBMAPPING");
-        add("DICT_CODE_LIB");
-        add("LIB_MANAGER");
-
-        add("GBP_MENU_SANYUAN");
-    }};
-
-    private static final List<String> IDENTITY_LIST = new ArrayList<String>() {{
-        add("GBP_USER");
-        add("GBP_ROLE");
-        add("GBP_ROLEMENU");
-    }};
-
-    private static final List<String> UPDATE_FILED_LENGTH = new ArrayList<String>() {{
-        add("alter table \"DAIMA\" modify \"DWMC\" VARCHAR2(2000)");
-        add("alter table \"DAIMA\" modify \"YDBM\" VARCHAR2(2000)");
-        add("alter table \"ZJ_WJYS\" modify \"WJMC\" VARCHAR2(2000)");
-        add("alter table \"DFPBZLX\" modify \"DFPBZLX_DESP\" VARCHAR2(2000)");
-        add("alter table \"GBP_USER_BEFORMD5\" modify \"REALNAME\" VARCHAR2(2000)");
-        add("alter table \"JDXZ_BD\" modify \"BEIZHU\" VARCHAR2(2000)");
-        add("alter table \"JJJ\" modify \"YDBM\" VARCHAR2(2000)");
-        add("alter table \"LOCAL_BD\" modify \"BEIZHU\" VARCHAR2(2000)");
-        add("alter table \"LXFS\" modify \"LXFS_LXR\" VARCHAR2(2000)");
-        add("alter table \"REPORT_JGSY_COMMON\" modify \"JGSY_NAME\" VARCHAR2(2000)");
-        add("alter table \"REPORT_SY\" modify \"INCORPORATOR\" VARCHAR2(2000)");
-        add("alter table \"REPORT_T_BWRY_JBXX\" modify \"XM\" VARCHAR2(2000)");
-        add("alter table \"SY\" modify \"INCORPORATOR\" VARCHAR2(2000)");
-        add("alter table \"ZHXSH\" modify \"DESP\" VARCHAR2(2000)");
-    }};
-
+    private static final Integer PAGE_SIZE = DEFAULT_SIZE * 20;
+    private static final Integer NEED_PAGE = DEFAULT_SIZE * 50;
+    @Autowired
+    private DbConfig dbConfig;
     @Autowired
     private OracleDao oracleDao;
     @Autowired
@@ -93,20 +62,23 @@ public class TransformService {
         log.info("dm 中有但是 oracle 中没有的表：{}", String.join(",", subtractDm));
 
         // 修改数据库长度
-        // UPDATE_FILED_LENGTH.forEach(sql -> {
-        //     try {
-        //         db.update(sql);
-        //     } catch (Exception e) {
-        //         log.error("修改字符串长度失败：{}", sql);
-        //     }
-        // });
+        dbConfig.getUpdateFiledLengthMap().forEach((k, v) -> {
+            String[] split = v.split(",");
+            for (String str : split) {
+                try {
+                    db.update(String.format("alter table %s modify %s VARCHAR2(2000)", k, str));
+                } catch (Exception e) {
+                    log.error("修改字符串长度失败：{} - {}", k, str);
+                }
+            }
+        });
 
         long startTime = System.currentTimeMillis();
         AtomicBoolean flag = new AtomicBoolean(true);
         AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
             log.info("当前查询表：{}", tableName);
-            if (SKIP_LIST.contains(tableName.toUpperCase())) {
+            if (dbConfig.getSkipList().contains(tableName.toUpperCase())) {
                 return;
             }
 
@@ -194,7 +166,7 @@ public class TransformService {
             }
             recordList.add(record);
         });
-        if (IDENTITY_LIST.contains(tableName.toUpperCase())) {
+        if (dbConfig.getIdentityList().contains(tableName.toUpperCase())) {
             db.update("SET IDENTITY_INSERT " + tableName + " ON");
             db.batchSave(tableName, recordList, BATCH_SAVE_SIZE);
             db.update("SET IDENTITY_INSERT " + tableName + " OFF");

@@ -47,3 +47,31 @@ logging:
   config: classpath:logback-spring.xml
   level:
     top.tanmw.oracle2dm.dao: debug
+
+com:
+  efficient:
+    update-filed-length-map:
+      DAIMA: DWMC,YDBM
+      ZJ_WJYS: WJMC
+      DFPBZLX: DFPBZLX_DESP
+      GBP_USER_BEFORMD5: REALNAME
+      JDXZ_BD: BEIZHU
+      JJJ: YDBM
+      LOCAL_BD: BEIZHU
+      LXFS: LXFS_LXR
+      REPORT_JGSY_COMMON: JGSY_NAME
+      REPORT_SY: INCORPORATOR,JGBZWH
+      REPORT_T_BWRY_JBXX: XM
+      SY: INCORPORATOR
+      ZHXSH: DESP
+    identityList:
+      - GBP_USER
+      - GBP_ROLE
+      - GBP_ROLEMENU
+    skipList:
+      - DICTTREE_LIB
+      - DICTT_LIBMAPPING
+      - DICT_CODE_LIB
+      - LIB_MANAGER
+      - GBP_MENU_SANYUAN
+
