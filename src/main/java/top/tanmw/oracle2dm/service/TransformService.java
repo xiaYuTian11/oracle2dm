@@ -81,14 +81,14 @@ public class TransformService {
             if (dbConfig.getSkipList().contains(tableName.toUpperCase())) {
                 return;
             }
-
-            if (StrUtil.equalsIgnoreCase("ZJ_WJYS", tableName)) {
-                flag.set(false);
-            }
-
-            if (flag.get()) {
-                return;
-            }
+            //
+            // if (StrUtil.equalsIgnoreCase("ZJ_WJYS", tableName)) {
+            //     flag.set(false);
+            // }
+            //
+            // if (flag.get()) {
+            //     return;
+            // }
 
             Integer delete = dmDao.delete(tableName);
             log.info("删除Dm数据库中{}数据:{}条", tableName, delete);
@@ -119,30 +119,30 @@ public class TransformService {
                 } else {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
-                    CountDownLatch cd = new CountDownLatch(page);
+                    // CountDownLatch cd = new CountDownLatch(page);
                     for (int i = 0; i < page; i++) {
                         int finalI = i;
                         String finalConstraint = constraint;
-                        if (i != 0) {
-                            ThreadUtil.sleep(10);
-                        }
+                        // if (i != 0) {
+                        //     ThreadUtil.sleep(10);
+                        // }
                         if (i >= 2) {
-                            cd.countDown();
+                            // cd.countDown();
                             continue;
                         }
-                        ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
-                            log.info("分页查询{}数据:{}", tableName, finalI * PAGE_SIZE + "--" + (finalI + 1) * PAGE_SIZE);
-                            List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
-                            // mapList.parallelStream().forEach(map-> map.remove("R"));
-                            this.save2Dm(tableName, mapList, removeR.get());
-                            cd.countDown();
-                        });
+                        // ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
+                        log.info("分页查询{}数据:{}", tableName, finalI * PAGE_SIZE + "--" + (finalI + 1) * PAGE_SIZE);
+                        List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
+                        // mapList.parallelStream().forEach(map-> map.remove("R"));
+                        this.save2Dm(tableName, mapList, removeR.get());
+                        // cd.countDown();
+                        // });
                     }
-                    try {
-                        cd.await();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
+                    // try {
+                    //     cd.await();
+                    // } catch (InterruptedException e) {
+                    //     throw new RuntimeException(e);
+                    // }
                 }
             } else {
                 List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
@@ -177,13 +177,13 @@ public class TransformService {
     }
 
     private void executor(Collection<String> list, Consumer<String> consumer) throws Exception {
-        // CountDownLatch cd = new CountDownLatch(list.size());
+        CountDownLatch cd = new CountDownLatch(list.size());
         for (String tableName : list) {
-            // ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
-            consumer.accept(tableName);
-            // cd.countDown();
-            // });
+            ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
+                consumer.accept(tableName);
+                cd.countDown();
+            });
         }
-        // cd.await();
+        cd.await();
     }
 }
