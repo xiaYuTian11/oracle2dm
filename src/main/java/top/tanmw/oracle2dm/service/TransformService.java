@@ -61,6 +61,11 @@ public class TransformService {
         Collection<String> subtractDm = CollUtil.subtract(dmAllTable, oracleAllTable);
         log.info("dm 中有但是 oracle 中没有的表：{}", String.join(",", subtractDm));
 
+        intersection.forEach(tableName -> {
+            Integer delete = dmDao.delete(tableName);
+            log.info("删除Dm数据库中{}数据:{}条", tableName, delete);
+        });
+
         // 修改数据库长度
         dbConfig.getUpdateFiledLengthMap().forEach((k, v) -> {
             String[] split = v.split(",");
@@ -78,9 +83,6 @@ public class TransformService {
         AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
             log.info("当前查询表：{}", tableName);
-
-            Integer delete = dmDao.delete(tableName);
-            log.info("删除Dm数据库中{}数据:{}条", tableName, delete);
 
             Integer count = oracleDao.countByTableName(tableName);
             log.info(String.format("查询到%s中数据:%s条", tableName, count));
