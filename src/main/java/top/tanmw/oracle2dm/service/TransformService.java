@@ -44,15 +44,15 @@ public class TransformService {
 
     private DbPro db;
 
-    public List<Map<String, Object>> queryAll() throws Exception {
+    public boolean queryAll() throws Exception {
         db = Db.use(DbConstant.DM);
 
         List<String> oracleAllTable = oracleDao.findAllTable();
         List<String> dmAllTable = dmDao.findAllTable();
         Collection<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable)
                 .stream().sorted().collect(Collectors.toList());
-        // intersection = intersection.stream().filter(tableName -> !SKIP_LIST.contains(tableName.toUpperCase()))
-        //         .sorted().collect(Collectors.toList());
+        intersection = intersection.stream().filter(tableName -> !dbConfig.getSkipList().contains(tableName.toUpperCase()))
+                .sorted().collect(Collectors.toList());
         log.info("交集：{}", String.join(",", intersection));
 
         Collection<String> subtract = CollUtil.subtract(oracleAllTable, dmAllTable);
@@ -78,17 +78,6 @@ public class TransformService {
         AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
             log.info("当前查询表：{}", tableName);
-            if (dbConfig.getSkipList().contains(tableName.toUpperCase())) {
-                return;
-            }
-            //
-            // if (StrUtil.equalsIgnoreCase("ZJ_WJYS", tableName)) {
-            //     flag.set(false);
-            // }
-            //
-            // if (flag.get()) {
-            //     return;
-            // }
 
             Integer delete = dmDao.delete(tableName);
             log.info("删除Dm数据库中{}数据:{}条", tableName, delete);
@@ -119,30 +108,14 @@ public class TransformService {
                 } else {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
-                    // CountDownLatch cd = new CountDownLatch(page);
                     for (int i = 0; i < page; i++) {
-                        int finalI = i;
-                        String finalConstraint = constraint;
-                        // if (i != 0) {
-                        //     ThreadUtil.sleep(10);
-                        // }
                         if (i >= 2) {
-                            // cd.countDown();
                             continue;
                         }
-                        // ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
-                        log.info("分页查询{}数据:{}", tableName, finalI * PAGE_SIZE + "--" + (finalI + 1) * PAGE_SIZE);
-                        List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, finalConstraint, finalI * PAGE_SIZE, (finalI + 1) * PAGE_SIZE);
-                        // mapList.parallelStream().forEach(map-> map.remove("R"));
+                        log.info("分页查询{}数据:{}", tableName, i * PAGE_SIZE + "--" + (i + 1) * PAGE_SIZE);
+                        List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
                         this.save2Dm(tableName, mapList, removeR.get());
-                        // cd.countDown();
-                        // });
                     }
-                    // try {
-                    //     cd.await();
-                    // } catch (InterruptedException e) {
-                    //     throw new RuntimeException(e);
-                    // }
                 }
             } else {
                 List<Map<String, Object>> mapList = oracleDao.queryByTableName(tableName);
@@ -152,8 +125,10 @@ public class TransformService {
         });
 
         long endTime = System.currentTimeMillis();
-        log.info("总计耗时：{}", endTime - startTime);
-        return null;
+        long total = (endTime - startTime) / 1000;
+        long totalM = total / 60;
+        log.info("总计耗时：{}s,{}m", total, totalM);
+        return true;
     }
 
     private void save2Dm(String tableName, List<Map<String, Object>> mapListAll, boolean removeR) {

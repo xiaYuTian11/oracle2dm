@@ -20,7 +20,7 @@ public class ThreadUtil {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ThreadUtil.class);
     public static final ExecutorService EXECUTOR_SERVICE = TtlExecutors.getTtlExecutorService(new ThreadPoolExecutor(
-            12, 24, 60, TimeUnit.SECONDS,
+            6, 6, 60, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
             new ThreadFactoryBuilder().setDaemon(true).setNamePrefix("ThreadUtil-")
                     .setUncaughtExceptionHandler((t, e) -> LOGGER.error("任务处理异常!", e))
