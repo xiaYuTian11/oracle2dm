@@ -1,6 +1,8 @@
 package top.tanmw.oracle2dm.service;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUnit;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.jfinal.plugin.activerecord.Db;
 import com.jfinal.plugin.activerecord.DbPro;
@@ -14,10 +16,7 @@ import top.tanmw.oracle2dm.dao.DmDao;
 import top.tanmw.oracle2dm.dao.OracleDao;
 import top.tanmw.oracle2dm.utils.ThreadUtil;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,8 +78,9 @@ public class TransformService {
             }
         });
 
-        long startTime = System.currentTimeMillis();
-        AtomicBoolean flag = new AtomicBoolean(true);
+        // long startTime = System.currentTimeMillis();
+        Date startDate = new Date();
+        // AtomicBoolean flag = new AtomicBoolean(true);
         AtomicBoolean needPage = new AtomicBoolean(false);
         this.executor(intersection, (tableName) -> {
             log.info("当前查询表：{}", tableName);
@@ -127,14 +127,16 @@ public class TransformService {
 
         });
 
-        long endTime = System.currentTimeMillis();
-        long total = (endTime - startTime) / 1000;
-        long totalM = total / 60;
-        long oneHour = 60 * 60;
-        long hour = totalM / oneHour;
-        long minute = totalM - (oneHour * 60);
-        long second = total - (hour * 60 * 60 + minute * 60);
-        log.info("总计耗时：{}h - {}m - {}s", hour, minute, second);
+        Date endDate = new Date();
+        DateUtil.between(startDate, endDate, DateUnit.MINUTE);
+        // long endTime = System.currentTimeMillis();
+        // long total = (endTime - startTime) / 1000;
+        // long totalM = total / 60;
+        // long oneHour = 60 * 60;
+        // long hour = totalM / oneHour;
+        // long minute = totalM - (oneHour * 60);
+        // long second = total - (hour * 60 * 60 + minute * 60);
+        log.info("总计耗时： {}m", DateUtil.between(startDate, endDate, DateUnit.MINUTE));
         return true;
     }
 
