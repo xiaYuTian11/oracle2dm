@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -129,7 +130,11 @@ public class TransformService {
         long endTime = System.currentTimeMillis();
         long total = (endTime - startTime) / 1000;
         long totalM = total / 60;
-        log.info("总计耗时：{}s,{}m", total, totalM);
+        long oneHour = 60 * 60;
+        long hour = totalM / oneHour;
+        long minute = totalM - (oneHour * 60);
+        long second = total - (hour * 60 * 60 + minute * 60);
+        log.info("总计耗时：{}h - {}m - {}s", hour, minute, second);
         return true;
     }
 
@@ -156,9 +161,16 @@ public class TransformService {
     private void executor(Collection<String> list, Consumer<String> consumer) throws Exception {
         CountDownLatch cd = new CountDownLatch(list.size());
         for (String tableName : list) {
+            CopyOnWriteArrayList<String> errorList = new CopyOnWriteArrayList<>();
             ThreadUtil.EXECUTOR_SERVICE.execute(() -> {
-                consumer.accept(tableName);
-                cd.countDown();
+                try {
+                    consumer.accept(tableName);
+                } catch (Exception e) {
+                    log.error("传输异常的表: " + tableName, e);
+                    errorList.add(tableName);
+                } finally {
+                    cd.countDown();
+                }
             });
         }
         cd.await();
