@@ -9,6 +9,7 @@ import com.jfinal.plugin.activerecord.DbPro;
 import com.jfinal.plugin.activerecord.Record;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import top.tanmw.oracle2dm.config.DbConfig;
 import top.tanmw.oracle2dm.constants.DbConstant;
@@ -31,10 +32,31 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TransformService {
 
-    private static final Integer DEFAULT_SIZE = 10000;
-    private static final Integer BATCH_SAVE_SIZE = DEFAULT_SIZE * 10;
-    private static final Integer PAGE_SIZE = DEFAULT_SIZE * 20;
-    private static final Integer NEED_PAGE = DEFAULT_SIZE * 50;
+    public static Integer BATCH_SAVE_SIZE;
+    private static Integer PAGE_SIZE;
+    private static Integer NEED_PAGE;
+    private static boolean CHANGE_FIELD_LENGTH;
+
+    @Value("${com.efficient.batch-save-size}")
+    public void setBatchSaveSize(Integer batchSaveSize) {
+        TransformService.BATCH_SAVE_SIZE = batchSaveSize;
+    }
+
+    @Value("${com.efficient.page-size}")
+    public void setPageSize(Integer pageSize) {
+        TransformService.PAGE_SIZE = pageSize;
+    }
+
+    @Value("${com.efficient.change-field-length:true}")
+    public void setChangeFieldLength(boolean changeFieldLength) {
+        TransformService.CHANGE_FIELD_LENGTH = changeFieldLength;
+    }
+
+    @Value("${com.efficient.need-page}")
+    public void setNeedPage(Integer needPage) {
+        TransformService.NEED_PAGE = needPage;
+    }
+
     @Autowired
     private DbConfig dbConfig;
     @Autowired
@@ -49,7 +71,7 @@ public class TransformService {
 
         List<String> oracleAllTable = oracleDao.findAllTable();
         List<String> dmAllTable = dmDao.findAllTable();
-        Collection<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable)
+        List<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable)
                 .stream().sorted().collect(Collectors.toList());
         intersection = intersection.stream().filter(tableName -> !dbConfig.getSkipList().contains(tableName.toUpperCase()))
                 .sorted().collect(Collectors.toList());
@@ -67,23 +89,26 @@ public class TransformService {
         });
 
         // 修改数据库长度
-        dbConfig.getUpdateFiledLengthMap().forEach((k, v) -> {
-            String[] split = v.split(",");
-            for (String str : split) {
-                try {
-                    db.update(String.format("alter table %s modify %s VARCHAR2(2000)", k, str));
-                } catch (Exception e) {
-                    log.error("修改字符串长度失败：{} - {}", k, str);
+        if (CHANGE_FIELD_LENGTH) {
+            dbConfig.getUpdateFiledLengthMap().forEach((k, v) -> {
+                String[] split = v.split(",");
+                for (String str : split) {
+                    try {
+                        db.update(String.format("alter table %s modify %s VARCHAR2(2000)", k, str));
+                    } catch (Exception e) {
+                        log.error("修改字符串长度失败：{} - {}", k, str);
+                    }
                 }
-            }
-        });
+            });
+        }
 
-        // long startTime = System.currentTimeMillis();
         Date startDate = new Date();
-        // AtomicBoolean flag = new AtomicBoolean(true);
         AtomicBoolean needPage = new AtomicBoolean(false);
+        int size = intersection.size();
+        List<String> finalIntersection = intersection;
         this.executor(intersection, (tableName) -> {
-            log.info("当前查询表：{}", tableName);
+            int indexOf = finalIntersection.indexOf(tableName);
+            log.info("当前查询表：{},进度为：{}", tableName, indexOf + "/" + size);
 
             Integer count = oracleDao.countByTableName(tableName);
             log.info(String.format("查询到%s中数据:%s条", tableName, count));
@@ -97,7 +122,6 @@ public class TransformService {
 
             AtomicBoolean removeR = new AtomicBoolean(false);
 
-            // CopyOnWriteArrayList<Map<String, Object>> mapListAll = new CopyOnWriteArrayList<>();
             if (needPage.get()) {
                 // 查询数据库表主键
                 String constraint = oracleDao.findConstraintByP(String.format("'%s'", tableName));
@@ -129,13 +153,6 @@ public class TransformService {
 
         Date endDate = new Date();
         DateUtil.between(startDate, endDate, DateUnit.MINUTE);
-        // long endTime = System.currentTimeMillis();
-        // long total = (endTime - startTime) / 1000;
-        // long totalM = total / 60;
-        // long oneHour = 60 * 60;
-        // long hour = totalM / oneHour;
-        // long minute = totalM - (oneHour * 60);
-        // long second = total - (hour * 60 * 60 + minute * 60);
         log.info("总计耗时： {}m", DateUtil.between(startDate, endDate, DateUnit.MINUTE));
         return true;
     }

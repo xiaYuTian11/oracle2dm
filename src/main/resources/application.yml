@@ -50,6 +50,7 @@ logging:
 
 com:
   efficient:
+    change-field-length: false
     update-filed-length-map:
       DAIMA: DWMC,YDBM
       ZJ_WJYS: WJMC
@@ -75,4 +76,12 @@ com:
       - DICT_CODE_LIB
       - LIB_MANAGER
       - GBP_MENU_SANYUAN
+    # 批量保存数量
+    batch-save-size: 50000
+    # 需要分页的数量，100万
+    need-page: 1000000
+    # 分页查询的，100万
+    page-size: 200000
+
+
 
