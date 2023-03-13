@@ -163,9 +163,9 @@ public class TransformService {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
                     for (int i = 0; i < page; i++) {
-                        if (i >= 1) {
-                            continue;
-                        }
+                        // if (i >= 1) {
+                        //     continue;
+                        // }
                         log.info("分页查询{}数据:{}", tableName, i * PAGE_SIZE + "--" + (i + 1) * PAGE_SIZE);
                         List<Map<String, Object>> mapList = oracleDao.queryByTableNameOrderBy(tableName, constraint, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
                         this.save2Dm(tableName, mapList, removeR.get());
