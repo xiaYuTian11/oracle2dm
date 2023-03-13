@@ -50,13 +50,15 @@ logging:
 
 com:
   efficient:
+    ## 是否修改字符串长度
     change-field-length: false
     update-filed-length-map:
       DAIMA: DWMC,YDBM
       ZJ_WJYS: WJMC
       DFPBZLX: DFPBZLX_DESP
       GBP_USER_BEFORMD5: REALNAME
-      JDXZ_BD: BEIZHU
+      ## 需要手动变更为 text 长度
+#      JDXZ_BD: BEIZHU
       JJJ: YDBM
       LOCAL_BD: BEIZHU
       LXFS: LXFS_LXR
@@ -76,12 +78,17 @@ com:
       - DICT_CODE_LIB
       - LIB_MANAGER
       - GBP_MENU_SANYUAN
+      - SYS_LOG
+      - SYS_LOG_HISTORY
     # 批量保存数量
     batch-save-size: 50000
     # 需要分页的数量，100万
     need-page: 1000000
     # 分页查询的，100万
     page-size: 200000
+    # 保存处理后的文件路径
+    transform-skip: true
+    transform-file: /home/oracle2dm.txt
 
 
 

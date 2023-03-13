@@ -3,6 +3,7 @@ package top.tanmw.oracle2dm.service;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.jfinal.plugin.activerecord.Db;
 import com.jfinal.plugin.activerecord.DbPro;
@@ -17,10 +18,13 @@ import top.tanmw.oracle2dm.dao.DmDao;
 import top.tanmw.oracle2dm.dao.OracleDao;
 import top.tanmw.oracle2dm.utils.ThreadUtil;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,10 @@ public class TransformService {
     private static Integer PAGE_SIZE;
     private static Integer NEED_PAGE;
     private static boolean CHANGE_FIELD_LENGTH;
+    @Value("${com.efficient.transform-file}")
+    private String transformFilePath;
+    @Value("${com.efficient.transform-skip:true}")
+    private boolean transformSkip;
 
     @Value("${com.efficient.batch-save-size}")
     public void setBatchSaveSize(Integer batchSaveSize) {
@@ -69,11 +77,28 @@ public class TransformService {
     public boolean queryAll() throws Exception {
         db = Db.use(DbConstant.DM);
 
+        // 初始化文件
+        File file = new File(transformFilePath);
+        if (!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+        if (!file.exists()) {
+            file.createNewFile();
+        }
+
+        List<String> readLines = FileUtil.readLines(file, StandardCharsets.UTF_8);
+        List<String> successTable = new ArrayList<>();
+        readLines.forEach(readLine -> successTable.add(readLine.split(":")[1]));
+        List<String> skipList = dbConfig.getSkipList();
+        if (transformSkip) {
+            skipList.addAll(successTable);
+        }
+
         List<String> oracleAllTable = oracleDao.findAllTable();
         List<String> dmAllTable = dmDao.findAllTable();
         List<String> intersection = CollUtil.intersection(oracleAllTable, dmAllTable)
                 .stream().sorted().collect(Collectors.toList());
-        intersection = intersection.stream().filter(tableName -> !dbConfig.getSkipList().contains(tableName.toUpperCase()))
+        intersection = intersection.stream().filter(tableName -> !skipList.contains(tableName.toUpperCase()))
                 .sorted().collect(Collectors.toList());
         log.info("交集：{}", String.join(",", intersection));
 
@@ -94,13 +119,15 @@ public class TransformService {
                 String[] split = v.split(",");
                 for (String str : split) {
                     try {
-                        db.update(String.format("alter table %s modify %s VARCHAR2(2000)", k, str));
+                        db.update(String.format("alter table %s modify %s VARCHAR2(8000)", k, str));
                     } catch (Exception e) {
                         log.error("修改字符串长度失败：{} - {}", k, str);
                     }
                 }
             });
         }
+
+        ReentrantLock lock = new ReentrantLock();
 
         Date startDate = new Date();
         AtomicBoolean needPage = new AtomicBoolean(false);
@@ -136,7 +163,7 @@ public class TransformService {
                     removeR.set(true);
                     int page = ((count - 1) / PAGE_SIZE) + 1;
                     for (int i = 0; i < page; i++) {
-                        if (i >= 2) {
+                        if (i >= 1) {
                             continue;
                         }
                         log.info("分页查询{}数据:{}", tableName, i * PAGE_SIZE + "--" + (i + 1) * PAGE_SIZE);
@@ -149,6 +176,7 @@ public class TransformService {
                 this.save2Dm(tableName, mapList, removeR.get());
             }
 
+            this.writeResult(tableName, file, lock);
         });
 
         Date endDate = new Date();
@@ -193,5 +221,14 @@ public class TransformService {
             });
         }
         cd.await();
+    }
+
+    public void writeResult(String tableName, File file, ReentrantLock lock) {
+        lock.lock();
+        try {
+            FileUtil.appendUtf8String(String.format("SUCCESS:%s\n", tableName), file);
+        } finally {
+            lock.unlock();
+        }
     }
 }
